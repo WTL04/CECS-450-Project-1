@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
 df = pd.read_csv("Crime_Data_from_2020_to_Present.csv")
 
@@ -45,11 +46,35 @@ fig = px.density_mapbox(
     height=700
 )
 
+
+fig.update_traces(hoverinfo="skip", hovertemplate=None)
+
+#Adding invisible scattermapbox layer on heatmap
+fig.add_trace(go.Scattermapbox(
+    lat=df["LAT"],
+    lon=df["LON"],
+    mode="markers",
+    marker=dict(size=5, opacity=0),
+    hoverinfo="text",
+    text=[
+        f"Area: {area}<br>"
+        f"Crime: {crime}<br>"
+        f"Lat: {lat:.4f}<br>"
+        f"Lon: {lon:.4f}<br>"
+        f"Violent: {'Yes' if violent == 1 else 'No'}"
+        for area, crime, lat, lon, violent in zip(
+            df["AREA NAME"], df["Crm Cd Desc"], df["LAT"], df["LON"], df["Violent"]
+        )
+    ]
+
+))
+
+
 #Offset label
 fig.update_layout(
     mapbox_style="open-street-map",
     hovermode="closest",
-    hoverdistance=40,
+    hoverdistance=5,
     hoverlabel=dict(
         bgcolor = "black",
         font_size=10,
@@ -59,10 +84,12 @@ fig.update_layout(
     margin=dict(r=200)
 )
 
+
 fig.update_traces(
     hoverlabel=dict(
         namelength=-1
     )
 )
+
 
 fig.show()
