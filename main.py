@@ -42,6 +42,7 @@ df = df[(df["LAT"] != 0) & (df["LON"] != 0)]
 # Sample
 df = df.sample(n=100000, random_state=1)
 
+
 # Create density heatmap
 fig = px.density_mapbox(
     df,
@@ -55,5 +56,28 @@ fig = px.density_mapbox(
     height=700
 )
 
-fig.update_layout(mapbox_style="open-street-map")
+#Offset info box
+fig.update_traces(
+    hovertemplate=
+        "Area: %{customdata[0]}<br>"
+        "Crime: %{customdata[1]}<br>"
+        "Latitude: %{customdata[2]}<br>"
+        "Longitude: %{customdata[3]}<br>"
+        "Violent: %{customdata[4]}<extra></extra>"
+)
+
+fig.update_layout(
+    mapbox_style="open-street-map",
+    hovermode="closest",
+    hoverlabel=dict(
+        align="left",
+        bgcolor="black",
+        font_size=12,
+        font_color="white"
+    ),
+    margin=dict(r=200)
+)
+
+
+#fig.update_layout(mapbox_style="open-street-map")
 fig.show()
