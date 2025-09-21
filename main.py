@@ -23,17 +23,6 @@ property_list = [
 # 1 = violent, 0 = property
 df["Violent"] = df["Crm Cd Desc"].isin(violent_list).astype(int)
 
-# # Total number of Part 1 crimes
-# print(f"Total Part 1 crimes: {len(df):,}")
-
-# # Count of each Part 1 crime description
-# print("\nCounts by Crime Description:")
-# print(df["Crm Cd Desc"].value_counts())
-
-# # Count of Violent vs Property (1 vs 0)
-# print("\nCounts by Violent Flag:")
-# print(df["Violent"].value_counts().rename({1: "Violent", 0: "Property"}))
-
 # -----Creating Map-----
 
 # Clean coordinates
@@ -56,28 +45,24 @@ fig = px.density_mapbox(
     height=700
 )
 
-#Offset info box
-fig.update_traces(
-    hovertemplate=
-        "Area: %{customdata[0]}<br>"
-        "Crime: %{customdata[1]}<br>"
-        "Latitude: %{customdata[2]}<br>"
-        "Longitude: %{customdata[3]}<br>"
-        "Violent: %{customdata[4]}<extra></extra>"
-)
-
+#Offset label
 fig.update_layout(
     mapbox_style="open-street-map",
     hovermode="closest",
+    hoverdistance=40,
     hoverlabel=dict(
-        align="left",
-        bgcolor="black",
-        font_size=12,
-        font_color="white"
+        bgcolor = "black",
+        font_size=10,
+        font_color="white",
+        align="left"
     ),
     margin=dict(r=200)
 )
 
+fig.update_traces(
+    hoverlabel=dict(
+        namelength=-1
+    )
+)
 
-#fig.update_layout(mapbox_style="open-street-map")
 fig.show()
