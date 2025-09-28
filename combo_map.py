@@ -1,93 +1,174 @@
-# run from terminal
-import json, pandas as pd, plotly.express as px, plotly.io as pio
-pio.renderers.default = "browser"   # opens in system browser
+import json
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import plotly.io as pio
 
-CSV = "Crime_Data_from_2020_to_Present.csv"
-GEO = "LAPD_Division_5922489107755548254.geojson"
-
-CENTER = {"lat":34.05,"lon":-118.25}
-ZOOM = 9
-HEIGHT = 800
-
-# ---- load + prep ----
-df = pd.read_csv(CSV)
-df = df[df["Part 1-2"] == 1] # filter part 1 crimes, see google doc for details
-df = df[(df["LAT"] != 0) & (df["LON"] != 0)] # cleaning up coord data
-
-# set violent crimes = 1, via keywords
-violent_kw = ["ASSAULT","ROBBERY","HOMICIDE","MANSLAUGHTER","RAPE","SEXUAL",
-              "PENETRATION","ORAL COPULATION","SODOMY","BRANDISH WEAPON","SHOTS FIRED"]
-pat = "|".join(violent_kw)
-df["Violent"] = df["Crm Cd Desc"].str.upper().str.contains(pat, regex=True).astype(int)
+CSV_PATH = "Crime_Data_from_2020_to_Present.csv"
+DIVISIONS_GEOJSON = "LAPD_Division_5922489107755548254.geojson"
 
 
-# open up geojson for choropleth map
-with open(GEO) as f:
+CENTER = dict(lat=34.05, lon=-118.25)
+ZOOM   = 9
+HEIGHT = 820
+MAP_STYLE = "open-street-map"
+
+VIOLENT_KEYS = [
+    "ASSAULT", "ROBBERY", "HOMICIDE", "MANSLAUGHTER",
+    "RAPE", "SEXUAL", "PENETRATION", "ORAL COPULATION",
+    "SODOMY", "BRANDISH WEAPON", "SHOTS FIRED"
+]
+
+def is_violent(desc: str) -> int:
+    if not isinstance(desc, str):
+        return 0
+    u = desc.upper()
+    return int(any(k in u for k in VIOLENT_KEYS))
+
+def parse_occ_datetime(series: pd.Series) -> pd.Series:
+    dt = pd.to_datetime(series, format="%m/%d/%Y %I:%M:%S %p", errors="coerce")
+    if dt.isna().all():
+        dt = pd.to_datetime(series, format="%m/%d/%Y", errors="coerce")
+    miss = dt.isna()
+    if miss.any():
+        dt.loc[miss] = pd.to_datetime(series.loc[miss], errors="coerce")
+    return dt
+
+df = pd.read_csv(CSV_PATH, low_memory=False)
+
+if "Part 1-2" in df.columns:
+    try:
+        df = df[df["Part 1-2"].astype(float) == 1.0]
+    except Exception:
+        df = df[df["Part 1-2"] == 1]
+
+if "LAT" in df.columns and "LON" in df.columns:
+    df = df[(df["LAT"].notna()) & (df["LON"].notna())]
+    df = df[(df["LAT"] != 0) & (df["LON"] != 0)]
+
+if "DATE OCC" in df.columns:
+    df["OCC_DT"] = parse_occ_datetime(df["DATE OCC"])
+    df = df.dropna(subset=["OCC_DT"])
+    df["Year"] = df["OCC_DT"].dt.year
+    df = df[df["Year"] == 2023]
+else:
+    print("[warn] 'DATE OCC' missing; not filtering to 2023.")
+
+df["Violent"] = df["Crm Cd Desc"].apply(is_violent).astype(int)
+
+
+if "AREA NAME" not in df.columns:
+    df["AREA NAME"] = df.get("AREA", "").astype(str)
+df["AREA NAME"] = df["AREA NAME"].astype(str).str.strip().str.upper()
+
+df_geo = df.groupby("AREA NAME", as_index=False).agg(
+    value=("Crm Cd Desc", "count")
+).rename(columns={"AREA NAME": "APREC"})
+
+with open(DIVISIONS_GEOJSON, "r") as f:
     gj = json.load(f)
 
-df_geo = pd.DataFrame({
-    "APREC": [ft["properties"]["APREC"] for ft in gj["features"]],
-    "value": range(len(gj["features"]))   # unique dummy values
-})
+for ft in gj["features"]:
+    name = str(ft["properties"].get("APREC", "")).strip().upper()
+    ft["properties"]["APREC_UP"] = name
 
-# ---- choropleth (divisions) ----
+df_geo["APREC"] = df_geo["APREC"].str.strip().str.upper()
+
 fig_choro = px.choropleth_map(
-    df_geo, 
+    df_geo,
     geojson=gj,
-    featureidkey="properties.APREC",   
+    featureidkey="properties.APREC_UP",
     locations="APREC",
-    color="value",                       # dummy column drives fill
+    color="value",
     color_continuous_scale="Viridis",
-    map_style="open-street-map",
-    center=CENTER, 
-    zoom=ZOOM, 
-    opacity=0.85, 
-    height=HEIGHT
+    center=CENTER,
+    zoom=ZOOM,
+    height=HEIGHT,
+    opacity=0.85,
+    map_style=MAP_STYLE,
 )
 fig_choro.update_traces(marker_line_width=0.6, marker_line_color="black")
-
-
-# ---- density (points) with sample----
-fig_dens = px.density_map(
-    df.sample(n=min(120_000, len(df)), random_state=1),
-    lat="LAT", 
-    lon="LON", 
-    z="Violent",
-    radius=5, 
-    hover_data=["AREA NAME","Crm Cd Desc"],
-    center=CENTER, 
-    zoom=ZOOM, 
-    height=HEIGHT
+fig_choro.update_coloraxes(colorbar_title="Incidents (2023)")
+fig_choro.update_traces(
+    hovertemplate="<b>%{location}</b><br>Incidents: %{z:,}<extra></extra>"
 )
-fig_dens.update_layout(map_style="open-street-map")
 
-# ---- combine + toggle ----
-fig = fig_choro
+sample_n = min(120_000, len(df))
+df_samp = df.sample(n=sample_n, random_state=1) if sample_n else df
+
+fig_dens = px.density_map(
+    df_samp,
+    lat="LAT",
+    lon="LON",
+    z="Violent",              
+    radius=10,                
+    opacity=0.70,
+    hover_data={
+        "AREA NAME": True,
+        "Crm Cd Desc": True,
+        "LAT": False, "LON": False
+    },
+    center=CENTER,
+    zoom=ZOOM,
+    height=HEIGHT,
+    map_style=MAP_STYLE,
+    color_continuous_scale="YlOrRd"
+)
+for tr in fig_dens.data:
+    tr.hovertemplate = (
+        "Area: %{customdata[0]}<br>"
+        "Crime: %{customdata[1]}<extra></extra>"
+    )
+
+
+fig = go.Figure(data=list(fig_choro.data))
 n_choro = len(fig_choro.data)
-n_dens  = len(fig_dens.data)
 
-# add density traces (initially hidden)
 for tr in fig_dens.data:
     tr.visible = False
 fig.add_traces(fig_dens.data)
+n_dens = len(fig_dens.data)
 
 fig.update_layout(
+    map=dict(style=MAP_STYLE, center=CENTER, zoom=ZOOM),
+    margin=dict(l=0, r=0, t=44, b=0),
+    title="LA Crime — Choropleth (divisions) vs Density (hotspots) — 2023",
     updatemenus=[{
-        "type":"buttons", "x":0.02, "y":0.98, "xanchor":"left",
-        "buttons":[
-            {"label":"Choropleth (by division)",
-             "method":"update",
-             "args":[{"visible":[True]*n_choro + [False]*n_dens}]},
-            {"label":"Density (incident hotspots)",
-             "method":"update",
-             "args":[{"visible":[False]*n_choro + [True]*n_dens}]},
-            {"label":"Both",
-             "method":"update",
-             "args":[{"visible":[True]*n_choro + [True]*n_dens}]},
+        "type": "buttons",
+        "x": 0.02, "y": 0.98, "xanchor": "left",
+        "buttons": [
+            {
+                "label": "Choropleth (by division)",
+                "method": "update",
+                "args": [
+                    {"visible": [True]*n_choro + [False]*n_dens},
+                    {"title": "LA Crime — Choropleth by LAPD Division (2023)"}
+                ],
+            },
+            {
+                "label": "Density (incident hotspots)",
+                "method": "update",
+                "args": [
+                    {"visible": [False]*n_choro + [True]*n_dens},
+                    {"title": "LA Crime — Density Heatmap of Incidents (2023)"}
+                ],
+            },
+            {
+                "label": "Both",
+                "method": "update",
+                "args": [
+                    {"visible": [True]*n_choro + [True]*n_dens},
+                    {"title": "LA Crime — Choropleth + Density (2023)"}
+                ],
+            },
         ]
-    }],
-    margin=dict(l=0,r=0,t=0,b=0)
+    }]
 )
 
-fig.show()
-
+fig.write_html(
+    "la_crime_choro_vs_density.html",
+    include_plotlyjs="inline",
+    full_html=True,
+    auto_open=True
+)
+print("[ok] la_crime_choro_vs_density.html and opened it.")
