@@ -166,9 +166,9 @@ fig.update_layout(
 )
 
 fig.write_html(
-    "la_crime_choro_vs_density.html",
+    "la_crime.html",
     include_plotlyjs="inline",
     full_html=True,
     auto_open=True
 )
-print("[ok] la_crime_choro_vs_density.html and opened it.")
+print("[ok] la_crime.html and opened it.")
