@@ -4,27 +4,32 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
 
+# file paths
 CSV_PATH = "Crime_Data_from_2020_to_Present.csv"
 DIVISIONS_GEOJSON = "LAPD_Division_5922489107755548254.geojson"
 
-
+# initialize variable use for chorophleth and density bap
 CENTER = dict(lat=34.05, lon=-118.25)
 ZOOM   = 9
 HEIGHT = 820
 MAP_STYLE = "open-street-map"
 
+# key words for violent crimes
 VIOLENT_KEYS = [
     "ASSAULT", "ROBBERY", "HOMICIDE", "MANSLAUGHTER",
     "RAPE", "SEXUAL", "PENETRATION", "ORAL COPULATION",
     "SODOMY", "BRANDISH WEAPON", "SHOTS FIRED"
 ]
 
+# function to detect violet crime with VIOLENT_KEY
 def is_violent(desc: str) -> int:
     if not isinstance(desc, str):
         return 0
     u = desc.upper()
     return int(any(k in u for k in VIOLENT_KEYS))
 
+# formats data
+# cleans data to check if date is: missing
 def parse_occ_datetime(series: pd.Series) -> pd.Series:
     dt = pd.to_datetime(series, format="%m/%d/%Y %I:%M:%S %p", errors="coerce")
     if dt.isna().all():
@@ -34,29 +39,36 @@ def parse_occ_datetime(series: pd.Series) -> pd.Series:
         dt.loc[miss] = pd.to_datetime(series.loc[miss], errors="coerce")
     return dt
 
+# reading CVS file for la crimes
 df = pd.read_csv(CSV_PATH, low_memory=False)
 
+# returns dataframe to have crimes with part 1 crime only
 if "Part 1-2" in df.columns:
     try:
         df = df[df["Part 1-2"].astype(float) == 1.0]
     except Exception:
         df = df[df["Part 1-2"] == 1]
 
+# cleans data of "LON" and "LAT" columns
+# return columns that is not 0 or NaN
 if "LAT" in df.columns and "LON" in df.columns:
     df = df[(df["LAT"].notna()) & (df["LON"].notna())]
     df = df[(df["LAT"] != 0) & (df["LON"] != 0)]
 
+
 if "DATE OCC" in df.columns:
     df["OCC_DT"] = parse_occ_datetime(df["DATE OCC"])
-    df = df.dropna(subset=["OCC_DT"])
+    df = df.dropna(subset=["OCC_DT"]) # cleans data if data is "NaN"
     df["Year"] = df["OCC_DT"].dt.year
-    df = df[df["Year"] == 2023]
+    df = df[df["Year"] == 2023] # pick which year we want out data to be
 else:
     print("[warn] 'DATE OCC' missing; not filtering to 2023.")
+
 
 df["Violent"] = df["Crm Cd Desc"].apply(is_violent).astype(int)
 
 
+# get area name for choropleth
 if "AREA NAME" not in df.columns:
     df["AREA NAME"] = df.get("AREA", "").astype(str)
 df["AREA NAME"] = df["AREA NAME"].astype(str).str.strip().str.upper()
@@ -106,7 +118,8 @@ fig_dens = px.density_map(
     hover_data={
         "AREA NAME": True,
         "Crm Cd Desc": True,
-        "LAT": False, "LON": False
+        "LAT": False, "LON": False,
+        "Violent": True,
     },
     center=CENTER,
     zoom=ZOOM,
@@ -117,7 +130,8 @@ fig_dens = px.density_map(
 for tr in fig_dens.data:
     tr.hovertemplate = (
         "Area: %{customdata[0]}<br>"
-        "Crime: %{customdata[1]}<extra></extra>"
+        "Crime: %{customdata[1]}<br>"
+        "Violent: %{customdata[4]}"
     )
 
 
