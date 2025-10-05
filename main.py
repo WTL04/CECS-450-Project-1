@@ -1,29 +1,32 @@
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
+import json
 
-df = pd.read_csv("Crime_Data_from_2020_to_Present.csv")
+CSV = "Crime_Data_from_2020_to_Present.csv"
+GEO = "LAPD_Division_5922489107755548254.geojson"
 
-# Filter only Part 1 crimes
+# -----prep data-----
+df = pd.read_csv(CSV)
 df = df[df["Part 1-2"] == 1]
+df = df[(df["LAT"] != 0) & (df["LON"] != 0)]
 
-# define with team
-violent_list = [
-    "AGGREVATED ASSULT",
-    "GRAND THEFT AUTO",
-    "CRIMINAL HOMICIDE",
-    "FORCIBLE RAPE",
-    "RAPE, ATTEMPTED"
+violent_keyWords = [
+    "ASSAULT", "ROBBERY", "HOMICIDE", "MANSLAUGHTER",
+    "RAPE", "SEXUAL", "PENETRATION", "ORAL COPULATION",
+    "SODOMY", "BRANDISH WEAPON", "SHOTS FIRED"
 ]
 
-# define with team
-property_list = [
-
-]
+# filters out violent crimes based on keywords
+def is_violent(crime):
+    return any(keyword in crime for keyword in violent_keyWords)
 
 # 1 = violent, 0 = property
-df["Violent"] = df["Crm Cd Desc"].isin(violent_list).astype(int)
+df["Violent"] = df["Crm Cd Desc"].apply(is_violent).astype(int)
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> f270884 (offset labels (really only helps when window minimized))
 # -----Creating Map-----
 
 # Clean coordinates
@@ -34,7 +37,7 @@ df = df.sample(n=100000, random_state=1)
 
 
 # Create density heatmap
-fig = px.density_mapbox(
+fig = px.density_map(
     df,
     lat="LAT",
     lon="LON",
@@ -43,38 +46,14 @@ fig = px.density_mapbox(
     hover_data=["AREA NAME", "Crm Cd Desc"],
     center={"lat": 34.05, "lon": -118.25},
     zoom=9,
-    height=700
+    height=900
 )
-
-
-fig.update_traces(hoverinfo="skip", hovertemplate=None)
-
-#Adding invisible scattermapbox layer on heatmap
-fig.add_trace(go.Scattermapbox(
-    lat=df["LAT"],
-    lon=df["LON"],
-    mode="markers",
-    marker=dict(size=5, opacity=0),
-    hoverinfo="text",
-    text=[
-        f"Area: {area}<br>"
-        f"Crime: {crime}<br>"
-        f"Lat: {lat:.4f}<br>"
-        f"Lon: {lon:.4f}<br>"
-        f"Violent: {'Yes' if violent == 1 else 'No'}"
-        for area, crime, lat, lon, violent in zip(
-            df["AREA NAME"], df["Crm Cd Desc"], df["LAT"], df["LON"], df["Violent"]
-        )
-    ]
-
-))
-
 
 #Offset label
 fig.update_layout(
     mapbox_style="open-street-map",
     hovermode="closest",
-    hoverdistance=5,
+    hoverdistance=40,
     hoverlabel=dict(
         bgcolor = "black",
         font_size=10,
@@ -84,12 +63,10 @@ fig.update_layout(
     margin=dict(r=200)
 )
 
-
 fig.update_traces(
     hoverlabel=dict(
         namelength=-1
     )
 )
-
 
 fig.show()
