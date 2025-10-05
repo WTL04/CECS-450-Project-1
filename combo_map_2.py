@@ -1,8 +1,7 @@
 import json
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
-from dash import Dash, dcc, html, Input, Output
+from dash import Dash, dcc, html, dash_table, Input, Output
 
 CSV_PATH = "Crime_Data_from_2020_to_Present.csv"
 DIVISIONS_GEOJSON = "LAPD_Division_5922489107755548254.geojson"
@@ -82,6 +81,15 @@ for ft in gj["features"]:
 
 df_area["APREC"] = df_area["AREA NAME"]
 
+all_divisions = [f["properties"]["APREC_UP"] for f in gj["features"]]
+
+all_df = pd.DataFrame({"APREC": all_divisions})
+df_area = all_df.merge(df_area, on="APREC", how="left")
+
+df_area["total"] = df_area["total"].fillna(0)
+df_area["violent"] = df_area["violent"].fillna(0)
+df_area["violent_ratio"] = df_area["violent_ratio"].fillna(0)
+
 choropleth = px.choropleth_map(
     df_area,
     geojson=gj,
@@ -95,6 +103,12 @@ choropleth = px.choropleth_map(
 )
 
 choropleth.update_traces(
+    marker_opacity=0.45,
+    marker_line_width=1.5,
+    marker_line_color="black"
+)
+
+choropleth.update_traces(
     hovertemplate="<b>%{location}</b><br>Violent Ratio: %{z:.2%}<extra></extra>"
 )
 
@@ -103,16 +117,40 @@ app = Dash(__name__)
 app.layout = html.Div([
     html.H2("Los Angeles - Violent Crime Ratio by Division (2023)"),
     html.Div([
-        dcc.Graph(id="crime-ranking", style={"width": "58%"}),
-        dcc.Graph(id="crime-map", figure=choropleth, style={"width":"40%"})
-    ], style={"display":"flex", "align-items":"flex-start"})
+        html.Div([
+            html.H4(id="ranking-title", children="Crime Ranking (2023)", style={"textAlign": "center", "marginBottom": "10px"}),
+            dash_table.DataTable(
+                id = "crime-ranking-table",
+                columns=[
+                    {"name": "Crime Type", "id": "Crm Cd Desc"},
+                    {"name": "Count", "id": "count"},
+                    {"name": "Category", "id": "Category"},
+                ],
+                style_table={'overflowY': 'auto', 'height': '650px', 'width': '400px'},
+                style_cell={
+                    'textAlign': 'left',
+                    'padding': '8px',
+                    'fontSize': '14px',
+                    'whiteSpace': 'normal',
+                },
+                style_header={
+                    'fontWeight': 'bold',
+                    'backgroundColor': '#f2f2f2'
+                },
+                page_size=20
+            )
+        ], style={"width": "30%", "display": "inline-block", "verticalAlign": "top"}),
+
+        dcc.Graph(id="crime-map", figure=choropleth, style={"width": "68%", "display": "inline-block"})
+    ])
 ])
 
 @app.callback(
-    Output("crime-ranking", "figure"),
+    [Output("crime-ranking-table", "data"),
+    Output("ranking-title", "children")],
     Input("crime-map", "clickData")
 )
-def update_ranking(clickData):
+def update_ranking_table(clickData):
     if clickData is None:
         area = df_area.iloc[0]["AREA NAME"]
     else:
@@ -134,46 +172,8 @@ def update_ranking(clickData):
         lambda desc: "Violent" if is_violent(desc) else "Property"
     )
 
-    fig = px.bar(
-        rank,
-        x="count",
-        y="Label",
-        orientation="h",
-        title=f"Crime Ranking in {area} (2023)",
-        hover_data={
-            "Crm Cd Desc": True,
-            "Category": True,
-            "count": True,
-            "Label": False
-        }
-    )
-
-
-    fig.update_traces(
-        marker_color="steelblue"
-    )
-
-    fig.add_trace(
-        go.Bar(
-            x=[rank["count"].max()] * len(rank),
-            y=rank["Label"],
-            orientation="h",
-            marker=dict(color="rgba(0,0,0,0.01)"),
-            hoverinfo="skip",
-            showlegend=False
-        )
-    )
-
-    fig.update_layout(
-        barmode="overlay",
-        yaxis={'categoryorder':'total ascending'},
-        height=800,
-        width = 700,
-        margin=dict(l=250, r=40, t=50, b=20),
-        font=dict(size=12)
-    )
-
-    return fig
+    title = f"Crime Ranking in {area} (2023)"
+    return rank.to_dict("records"), title
 
 if __name__ == "__main__":
     app.run(debug=True)
