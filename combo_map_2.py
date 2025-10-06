@@ -67,7 +67,7 @@ df_raw["AREA NAME"] = df_raw["AREA NAME"].astype(str).str.strip().str.upper()
 # Mark whether a crime is violent
 df_raw["Violent"] = df_raw["Crm Cd Desc"].apply(is_violent).astype(int)
 
-# Focus only on years 2020â2024
+# Focus only on years 2020–2024
 df_raw = df_raw[df_raw["Year"].isin([2020, 2021, 2022, 2023, 2024])]
 
 # Load LAPD division boundaries and prep names
@@ -135,7 +135,7 @@ for year in [2020, 2021, 2022, 2023, 2024]:
 agg_year_area_full = pd.concat(full_list, ignore_index=True)
 
 # Dropdown options
-AVAILABLE_OPTIONS = [{"label": "All (2020â2024)", "value": "ALL"}] + \
+AVAILABLE_OPTIONS = [{"label": "All (2020-2024)", "value": "ALL"}] + \
                     [{"label": str(y), "value": y} for y in [2020, 2021, 2022, 2023, 2024]]
 
 def build_map(df_area: pd.DataFrame):
@@ -169,7 +169,7 @@ DEFAULT_SELECTION = "ALL"  # Start with all years combined
 if DEFAULT_SELECTION == "ALL":
     df_area_init = agg_all_area.copy()
     initial_map = build_map(df_area_init)
-    initial_title = "Citywide Crime Ranking (All 2020â2024)"
+    initial_title = "Citywide Crime Ranking (All 2020-2024)"
 else:
     df_area_init = agg_year_area_full[agg_year_area_full["Year"] == DEFAULT_SELECTION][["APREC","total","violent","violent_ratio"]]
     initial_map = build_map(df_area_init)
@@ -188,37 +188,54 @@ app.layout = html.Div([
             clearable=False,
             style={"width": "220px"}
         ),
+        # NEW: toggle for Table vs Pie
+        dcc.RadioItems(
+            id="view-toggle",
+            options=[{"label": "Table", "value": "table"},
+                     {"label": "Pie", "value": "pie"}],
+            value="table",
+            inline=True,
+            style={"marginTop": "6px"}
+        ),
     ], style={"marginBottom": "12px"}),
 
     html.Div([
-        # Left: Table
+        # Left panel: fixed width + toggleable Table/Pie
         html.Div([
-            html.H4(id="ranking-title", children=initial_title, style={"textAlign": "center", "marginBottom": "10px"}),
-            dash_table.DataTable(
-                id="crime-ranking-table",
-                columns=[
-                    {"name": "Crime Type", "id": "Crm Cd Desc"},
-                    {"name": "Count", "id": "count"},
-                    {"name": "Category", "id": "Category"},
-                ],
-                style_table={'overflowY': 'auto', 'height': '650px', 'width': '400px'},
-                style_cell={
-                    'textAlign': 'left',
-                    'padding': '8px',
-                    'fontSize': '14px',
-                    'whiteSpace': 'normal',
-                },
-                style_header={
-                    'fontWeight': 'bold',
-                    'backgroundColor': '#f2f2f2'
-                },
-                page_size=20,
-                data=[]
-            )
-        ], style={"width": "30%", "display": "inline-block", "verticalAlign": "top"}),
+            html.H4(id="ranking-title", children=initial_title, style={"textAlign": "left", "marginBottom": "10px"}),
+
+            # wrap table to show/hide it
+            html.Div(id="table-wrap", children=[
+                dash_table.DataTable(
+                    id="crime-ranking-table",
+                    columns=[
+                        {"name": "Crime Type", "id": "Crm Cd Desc"},
+                        {"name": "Count", "id": "count"},
+                        {"name": "Category", "id": "Category"},
+                    ],
+                    style_table={'overflowY': 'auto', 'height': '650px', 'width': '100%'},
+                    style_cell={
+                        'textAlign': 'left',
+                        'padding': '8px',
+                        'fontSize': '14px',
+                        'whiteSpace': 'normal',
+                    },
+                    style_header={
+                        'fontWeight': 'bold',
+                        'backgroundColor': '#f2f2f2'
+                    },
+                    page_size=20,
+                    data=[]
+                )
+            ]),
+            # pie container (hidden by default)
+            html.Div(id="pie-wrap", children=[
+                dcc.Graph(id="crime-pie", figure={}, style={"height": "650px", "width": "100%"})
+            ], style={"display": "none"})
+        ], style={"width": "420px", "display": "inline-block", "verticalAlign": "top"}),
 
         # Right: Map
-        dcc.Graph(id="crime-map", figure=initial_map, style={"width": "68%", "display": "inline-block"})
+        dcc.Graph(id="crime-map", figure=initial_map, style={"width": "60%", "display": "inline-block", "marginLeft": "200px"})
     ])
 ])
 
@@ -237,12 +254,16 @@ def update_map(selected):
 
 @app.callback(
     [Output("crime-ranking-table", "data"),
-     Output("ranking-title", "children")],
+     Output("ranking-title", "children"),
+     Output("crime-pie", "figure"),
+     Output("table-wrap", "style"),
+     Output("pie-wrap", "style")],
     [Input("crime-map", "clickData"),
-     Input("year-dropdown", "value")]
+     Input("year-dropdown", "value"),
+     Input("view-toggle", "value")]
 )
-def update_table(clickData, selected):
-    # Update table and title when year or map selection changes
+def update_table(clickData, selected, view_mode):
+    # Update table, pie, and title when year or map selection changes
     if selected == "ALL":
         if clickData and "points" in clickData and clickData["points"]:
             # When a division is clicked, show its top crimes
@@ -252,11 +273,11 @@ def update_table(clickData, selected):
                     .size()
                     .reset_index(name="count")
                     .sort_values("count", ascending=False))
-            title = f"Crime Ranking in {area} (All 2020â2024)"
+            title = f"Crime Ranking in {area} (All 2020–2024)"
         else:
             # Otherwise show citywide totals
             rank = agg_all_city.sort_values("count", ascending=False).copy()
-            title = "Citywide Crime Ranking (All 2020â2024)"
+            title = "Citywide Crime Ranking (All 2020-2024)"
     else:
         if clickData and "points" in clickData and clickData["points"]:
             area = clickData["points"][0].get("location")
@@ -278,7 +299,27 @@ def update_table(clickData, selected):
     # Label each crime as violent or property
     rank["Category"] = rank["Crm Cd Desc"].apply(lambda d: "Violent" if is_violent(d) else "Property")
 
-    return rank.to_dict("records"), title
+    # build a readable pie from the same ranking data
+    pie_df = rank.head(12).copy()  # cap labels for legibility
+    pie_fig = px.pie(pie_df, names="Crm Cd Desc", values="count", hole=0.25)
+    pie_fig.update_traces(
+        textinfo="percent",
+        textposition="inside",
+        hovertemplate="%{label}<br>Count: %{value}<extra></extra>"
+    )
+    pie_fig.update_layout(
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=650,
+        showlegend=len(pie_df) <= 10,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.02, xanchor="left", x=0),
+    )
+
+    # toggle visibility of table and pie
+    table_style = {"display": "block"} if view_mode == "table" else {"display": "none"}
+    pie_style = {"display": "block"} if view_mode == "pie" else {"display": "none"}
+
+    return rank.to_dict("records"), title, pie_fig, table_style, pie_style
 
 if __name__ == "__main__":
     app.run(debug=True)
+
