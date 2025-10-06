@@ -42,7 +42,7 @@ It then:
 
 | Component        | Technology                                     |
 | ---------------- | ---------------------------------------------- |
-| Backend / Server | Python 3.x                                     |
+| Backend / Server | Python                                         |
 | Web Framework    | Dash (Plotly)                                  |
 | Data Processing  | pandas                                         |
 | Visualization    | plotly.express                                 |
@@ -56,7 +56,7 @@ It then:
 1. Install dependencies
    pip install pandas plotly dash
 
-2. **Add data files**
+2. Add data files
    Place these files in the same directory as main.py:
 
    Crime_Data_from_2020_to_Present.csv
