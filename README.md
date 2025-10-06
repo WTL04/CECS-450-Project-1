@@ -16,7 +16,7 @@ The goal of this project is to make it easier to **explore and understand patter
 Due to the large size of the dataset, it’s not included in this repository.  
 You can download it manually from the link below and place it in the same directory as `main.py`:
 
-👉 [Download Crime_Data_from_2020_to_Present.csv](https://drive.google.com/file/d/187DV--NlUShVhU0fHw01Ufhcc0bEIXa/view?usp=sharing)
+👉 [Download Crime_Data_from_2020_to_Present.csv](https://catalog.data.gov/dataset/crime-data-from-2020-to-present)
 
  🧠 How It Works
 
