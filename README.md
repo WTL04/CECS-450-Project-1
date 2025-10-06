@@ -94,7 +94,7 @@ When the app runs, you’ll see:
 
 ---
 
-👤 Author
+👤 Authors
 Om Patel, Eric Hong, Wences Jacob Lorenzo, William Luu
 
 ---
