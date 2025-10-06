@@ -11,6 +11,13 @@ The goal of this project is to make it easier to **explore and understand patter
 * Compare violent vs property crime ratios
 * See top crime categories per area or citywide
 
+📂 Dataset
+
+Due to the large size of the dataset, it’s not included in this repository.  
+You can download it manually from the link below and place it in the same directory as `main.py`:
+
+👉 [Download Crime_Data_from_2020_to_Present.csv](https://drive.google.com/file/d/187DV--NlUShVhU0fHw01Ufhcc0bEIXa/view?usp=sharing)
+
  🧠 How It Works
 
 The app loads the main CSV dataset (`Crime_Data_from_2020_to_Present.csv`) and the LAPD divisions GeoJSON file (`LAPD_Division_5922489107755548254.geojson`).
