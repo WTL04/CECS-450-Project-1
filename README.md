@@ -16,7 +16,7 @@ The goal of this project is to make it easier to **explore and understand patter
 The app loads the main CSV dataset (`Crime_Data_from_2020_to_Present.csv`) and the LAPD divisions GeoJSON file (`LAPD_Division_5922489107755548254.geojson`).
 It then:
 
-1. Cleans and filter* the dataset to include only Part 1 (serious) crimes.
+1. Cleans and filter the dataset to include only Part 1 (serious) crimes.
 2. Parses and extracts the occurrence year from each crime record.
 3. Flags violent crimes based on keywords like “ASSAULT,” “ROBBERY,” “RAPE,” etc.
 4. Aggregates data by year and LAPD division.
@@ -57,7 +57,7 @@ It then:
    pip install pandas plotly dash
 
 2. **Add data files**
-   Place these files in the same directory as combo_map_2.py:
+   Place these files in the same directory as main.py:
 
    Crime_Data_from_2020_to_Present.csv
    LAPD_Division_5922489107755548254.geojson
