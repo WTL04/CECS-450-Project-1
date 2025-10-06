@@ -155,9 +155,18 @@ def build_map(df_area: pd.DataFrame):
         marker_opacity=0.45,
         marker_line_width=1.5,
         marker_line_color="black",
-        hovertemplate="<b>%{location}</b><br>Violent Ratio: %{z:.2%}<extra></extra>",
+        hovertemplate="<b>%{location}</b><br>Violent Crime Ratio: %{z:.2%}<extra></extra>",
     )
-    fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
+    fig.update_layout(
+        coloraxis_colorbar=dict(
+            title="Ratio of Violent Crime to Property Crime (%)",
+            title_side="right",
+            tickvals=[0, 0.1, 0.2, 0.3, 0.4],
+            ticktext=["0%", "10%", "20%", "30%", "40%"]
+        ),
+        margin=dict(l=0, r=0, t=0, b=0)
+    )
+
     return fig
 
 # Dash App setup
@@ -177,7 +186,7 @@ else:
 
 # Layout
 app.layout = html.Div([
-    html.H2("Los Angeles - Violent Crime Ratio by Division"),
+    html.H2("Los Angeles - Violent Crime Ratio by LAPD Geographic Division"),
 
     html.Div([
         html.Label("Select Year:", style={"fontWeight": "bold", "marginRight": "10px"}),
@@ -188,7 +197,7 @@ app.layout = html.Div([
             clearable=False,
             style={"width": "220px"}
         ),
-        # NEW: toggle for Table vs Pie
+        #Toggle for Table vs Pie
         dcc.RadioItems(
             id="view-toggle",
             options=[{"label": "Table", "value": "table"},
@@ -199,12 +208,13 @@ app.layout = html.Div([
         ),
     ], style={"marginBottom": "12px"}),
 
+    #Flexbox for figures
     html.Div([
-        # Left panel: fixed width + toggleable Table/Pie
+        #Left panel: Toggleable table/pie
         html.Div([
             html.H4(id="ranking-title", children=initial_title, style={"textAlign": "left", "marginBottom": "10px"}),
 
-            # wrap table to show/hide it
+            # Table
             html.Div(id="table-wrap", children=[
                 dash_table.DataTable(
                     id="crime-ranking-table",
@@ -213,30 +223,33 @@ app.layout = html.Div([
                         {"name": "Count", "id": "count"},
                         {"name": "Category", "id": "Category"},
                     ],
-                    style_table={'overflowY': 'auto', 'height': '650px', 'width': '100%'},
-                    style_cell={
-                        'textAlign': 'left',
-                        'padding': '8px',
-                        'fontSize': '14px',
-                        'whiteSpace': 'normal',
-                    },
-                    style_header={
-                        'fontWeight': 'bold',
-                        'backgroundColor': '#f2f2f2'
-                    },
+                    style_table={'overflowY': 'auto', 'height': '600px', 'width': '100%'},
+                    style_cell={'textAlign': 'left', 'padding': '8px', 'fontSize': '14px'},
+                    style_header={'fontWeight': 'bold', 'backgroundColor': '#f2f2f2'},
                     page_size=20,
                     data=[]
                 )
             ]),
-            # pie container (hidden by default)
+            # Pie chart (hidden by default)
             html.Div(id="pie-wrap", children=[
-                dcc.Graph(id="crime-pie", figure={}, style={"height": "650px", "width": "100%"})
+                dcc.Graph(id="crime-pie", figure={}, style={"height": "600px", "width": "100%"})
             ], style={"display": "none"})
-        ], style={"width": "420px", "display": "inline-block", "verticalAlign": "top"}),
+        ], style={
+            "flex": "0 0 35%",
+            "paddingRight": "1rem",
+            "minWidth": "350px"
+        }),
 
-        # Right: Map
-        dcc.Graph(id="crime-map", figure=initial_map, style={"width": "60%", "display": "inline-block", "marginLeft": "200px"})
-    ])
+        # Right panel: Choropleth map
+        html.Div([
+            dcc.Graph(id="crime-map", figure=initial_map, style={"height": "600px", "width": "100%"})
+        ], style={"flex": "1"})
+    ], style={
+        "display": "flex",
+        "flexWrap": "wrap",
+        "alignItems": "flex-start",
+        "justifyContent": "space-between"
+    })
 ])
 
 # Callbacks
