@@ -300,7 +300,7 @@ def update_table(clickData, selected, view_mode):
     rank["Category"] = rank["Crm Cd Desc"].apply(lambda d: "Violent" if is_violent(d) else "Property")
 
     # build a readable pie from the same ranking data
-    pie_df = rank.head(12).copy()  # cap labels for legibility
+    pie_df = rank.head(20).copy()  # cap labels for legibility
     pie_fig = px.pie(pie_df, names="Crm Cd Desc", values="count", hole=0.25)
     pie_fig.update_traces(
         textinfo="percent",
