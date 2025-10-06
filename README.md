@@ -63,7 +63,7 @@ It then:
    LAPD_Division_5922489107755548254.geojson
 
 3. Run the app
-   python combo_map_2.py
+   python main.py
 
 4. Open in your browser
    Visit:
