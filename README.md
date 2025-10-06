@@ -101,3 +101,6 @@ Om Patel, Eric Hong, Wences Jacob Lorenzo, William Luu
 
 🔗 Slides Link
 https://docs.google.com/presentation/d/1M46lJYb3p3tzGpBUOWqXklIW22dh2UMekToSSPWHumQ/edit?usp=sharing
+
+---
+🎥 [Watch the Demo](https://docs.google.com/file/d/1XBzGRQTItT6BPszTZ1T7xvfpfoj07nuU/preview)
